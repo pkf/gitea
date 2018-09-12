@@ -407,7 +407,7 @@ func CollaborationPost(ctx *context.Context) {
 		if err != nil {
 			ctx.ServerError("IsOrgMember", err)
 			return
-		} else if isMember {
+		} else if !isMember {
 			ctx.Flash.Info(ctx.Tr("repo.settings.user_is_org_member"))
 			ctx.Redirect(ctx.Repo.RepoLink + "/settings/collaboration")
 			return

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strings"
 
 	"code.gitea.io/gitea/models"
 	"code.gitea.io/gitea/modules/base"
@@ -363,7 +364,6 @@ func showOrgProfile(ctx *context.Context) {
 
 	org := ctx.Org.Organization
 	ctx.Data["Title"] = org.DisplayName()
-
 	page := ctx.QueryInt("page")
 	if page <= 0 {
 		page = 1
@@ -390,7 +390,6 @@ func showOrgProfile(ctx *context.Context) {
 			ctx.ServerError("env.CountRepos", err)
 			return
 		}
-		ctx.Data["Repos"] = repos
 	} else {
 		showPrivate := ctx.IsSigned && ctx.User.IsAdmin
 		repos, err = models.GetUserRepositories(org.ID, showPrivate, page, setting.UI.User.RepoPagingNum, "")
@@ -398,9 +397,20 @@ func showOrgProfile(ctx *context.Context) {
 			ctx.ServerError("GetRepositories", err)
 			return
 		}
-		ctx.Data["Repos"] = repos
 		count = models.CountUserRepositories(org.ID, showPrivate)
 	}
+	tmpRepos := []*models.Repository{}
+	var docRepo *models.Repository
+	for _, r := range repos {
+		if !strings.EqualFold(r.Name, "Document") {
+			tmpRepos = append(tmpRepos, r)
+		} else {
+			docRepo = r
+		}
+	}
+	ctx.Data["DocRepo"] = docRepo
+	ctx.Data["Repos"] = tmpRepos
+
 	ctx.Data["Page"] = paginater.New(int(count), setting.UI.User.RepoPagingNum, page, 5)
 
 	if err := org.GetMembers(); err != nil {

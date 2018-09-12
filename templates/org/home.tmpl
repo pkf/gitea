@@ -3,7 +3,7 @@
 	{{/* overflow: auto is the clearfix - this avoids the image going beyond
 	the container where it is supposed to stay inside. */}}
 	<div class="ui container" style="overflow: auto">
-		<img class="ui left" id="org-avatar" src="{{.Org.SizedRelAvatarLink 140}}"/>
+		<img class="ui left" id="org-avatar" style="width: 40px;height: 40px;" src="{{.Org.SizedRelAvatarLink 140}}"/>
 		<div id="org-info">
 			<div class="ui header">
 				{{.Org.DisplayName}}
@@ -24,6 +24,10 @@
 			<div class="ui eleven wide column">
 				{{if .IsOrganizationOwner}}
 					<div class="text right">
+					{{if .DocRepo}}
+						<a class="ui blue button" href="{{.DocRepo.Link}}" style="float: left;">{{if .DocRepo.Description}}{{.DocRepo.Description}}{{else}}{{.DocRepo.Name}}{{end}}</a>
+					{{end}}
+
 						<a class="ui green button" href="{{AppSubUrl}}/repo/create?org={{.Org.ID}}"><i class="octicon octicon-repo-create"></i> {{.i18n.Tr "new_repo"}}</a>
 					</div>
 					<div class="ui divider"></div>

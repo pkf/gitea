@@ -17,7 +17,7 @@ menu:
 
 阅读本章之前我们已经假设您对docker已经有了解并能够正常使用docker。
 
-我们在 Docker Hub 的 Gitea 组织中提供了自动更新的 Docker 镜像，它会保持最新的稳定版。你也可以用其它 Docker 服务来更新。首先你需要pull镜像：
+我们在 Docker Hub 的 Gitea 产品组中提供了自动更新的 Docker 镜像，它会保持最新的稳定版。你也可以用其它 Docker 服务来更新。首先你需要pull镜像：
 
 ```
 docker pull gitea/gitea:latest

@@ -44,7 +44,7 @@ menu:
 - `USER_PAGING_NUM`: 用户管理页面每页显示的用户数量。
 - `REPO_PAGING_NUM`: 仓库管理页面每页显示的仓库数量。
 - `NOTICE_PAGING_NUM`: 系统提示页面每页显示的提示数量。
-- `ORG_PAGING_NUM`: 组织管理页面每页显示的组织数量。
+- `ORG_PAGING_NUM`: 产品组管理页面每页显示的产品组数量。
 
 ## Markdown (`markdown`)
 
