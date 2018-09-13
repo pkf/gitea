@@ -39,7 +39,9 @@ func Home(ctx *context.Context) {
 			ctx.Data["Title"] = ctx.Tr("auth.active_your_account")
 			ctx.HTML(200, user.TplActivate)
 		} else {
-			user.Dashboard(ctx)
+            ctx.Data["PageIsHome"] = true
+            
+            user.Dashboard(ctx)
 		}
 		return
 		// Check non-logged users landing page.
@@ -54,6 +56,19 @@ func Home(ctx *context.Context) {
 		ctx.Redirect(setting.AppSubURL + "/user/login")
 		return
 	}
+    
+    orderedOAuth2Names, oauth2Providers, err := models.GetActiveOAuth2Providers()
+    if err != nil {
+        ctx.ServerError("UserSignIn", err)
+        return
+    }
+    ctx.Data["OrderedOAuth2Names"] = orderedOAuth2Names
+    ctx.Data["OAuth2Providers"] = oauth2Providers
+    ctx.Data["Title"] = ctx.Tr("sign_in")
+    ctx.Data["SignInLink"] = setting.AppSubURL + "/user/login"
+    ctx.Data["PageIsSignIn"] = true
+    ctx.Data["PageIsLogin"] = true
+    
 
 	ctx.Data["PageIsHome"] = true
 	ctx.Data["IsRepoIndexerEnabled"] = setting.Indexer.RepoIndexerEnabled

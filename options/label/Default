@@ -1,7 +1,7 @@
-#ee0701 bug ; Something is not working
-#cccccc duplicate ; This issue or pull request already exists
-#84b6eb enhancement ; New feature
-#128a0c help wanted ; Need some help
-#e6e6e6 invalid ; Something is wrong
-#cc317c question ; More information is needed
-#ffffff wontfix ; This won't be fixed
+#ee0701 错误 ; 不能正常工作
+#cccccc 未修复 ; 这个问题依然存在
+#84b6eb 新功能 ; 新的功能
+#128a0c 求助 ; 需要一些帮助
+#e6e6e6 无效 ; 有些功能失效了
+#cc317c 问题 ; 需要提供更多信息
+#ffffff 不处理 ; 还不能确定

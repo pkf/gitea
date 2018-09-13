@@ -161,6 +161,7 @@ func RegisterRoutes(m *macaron.Macaron) {
 	}
 
 	m.Use(user.GetNotificationCount)
+	m.Use(user.GetIssueCount)
 
 	// FIXME: not all routes need go through same middlewares.
 	// Especially some AJAX requests, we can reduce middleware number to improve performance.
@@ -692,7 +693,7 @@ func RegisterRoutes(m *macaron.Macaron) {
 		}, repo.MustBeNotBare, context.CheckUnit(models.UnitTypeCode))
 
 		m.Group("/commits", func() {
-			m.Get("/branch/*", context.RepoRefByType(context.RepoRefBranch), repo.RefCommits)
+			m.Get("/branch/*",   repo.RefCommits)
 			m.Get("/tag/*", context.RepoRefByType(context.RepoRefTag), repo.RefCommits)
 			m.Get("/commit/*", context.RepoRefByType(context.RepoRefCommit), repo.RefCommits)
 			// "/*" route is deprecated, and kept for backward compatibility

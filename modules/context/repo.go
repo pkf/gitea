@@ -468,6 +468,183 @@ func RepoAssignment() macaron.Handler {
 	}
 }
 
+func RepoAssignmentByName(repoName string) macaron.Handler {
+    return func(ctx *Context) {
+        var (
+            owner *models.User
+            err   error
+        )
+        
+        userName := ctx.Params(":username")
+        
+        // Check if the user is the same as the repository owner
+        if ctx.IsSigned && ctx.User.LowerName == strings.ToLower(userName) {
+            owner = ctx.User
+        } else {
+            owner, err = models.GetUserByName(userName)
+            if err != nil {
+                if models.IsErrUserNotExist(err) {
+                    if ctx.Query("go-get") == "1" {
+                        EarlyResponseForGoGetMeta(ctx)
+                        return
+                    }
+                    ctx.NotFound("GetUserByName", nil)
+                } else {
+                    ctx.ServerError("GetUserByName", err)
+                }
+                return
+            }
+        }
+        ctx.Repo.Owner = owner
+        ctx.Data["Username"] = ctx.Repo.Owner.Name
+        
+        // Get repository.
+        repo, err := models.GetRepositoryByName(owner.ID, repoName)
+        if err != nil {
+            if models.IsErrRepoNotExist(err) {
+                redirectRepoID, err := models.LookupRepoRedirect(owner.ID, repoName)
+                if err == nil {
+                    RedirectToRepo(ctx, redirectRepoID)
+                } else if models.IsErrRepoRedirectNotExist(err) {
+                    if ctx.Query("go-get") == "1" {
+                        EarlyResponseForGoGetMeta(ctx)
+                        return
+                    }
+                    ctx.NotFound("GetRepositoryByName", nil)
+                } else {
+                    ctx.ServerError("LookupRepoRedirect", err)
+                }
+            } else {
+                ctx.ServerError("GetRepositoryByName", err)
+            }
+            return
+        }
+        repo.Owner = owner
+        
+        repoAssignment(ctx, repo)
+        if ctx.Written() {
+            return
+        }
+        
+        gitRepo, err := git.OpenRepository(models.RepoPath(userName, repoName))
+        if err != nil {
+            ctx.ServerError("RepoAssignment Invalid repo "+models.RepoPath(userName, repoName), err)
+            return
+        }
+        ctx.Repo.GitRepo = gitRepo
+        ctx.Repo.RepoLink = repo.Link()
+        ctx.Data["RepoLink"] = ctx.Repo.RepoLink
+        ctx.Data["RepoRelPath"] = ctx.Repo.Owner.Name + "/" + ctx.Repo.Repository.Name
+        
+        tags, err := ctx.Repo.GitRepo.GetTags()
+        if err != nil {
+            ctx.ServerError("GetTags", err)
+            return
+        }
+        ctx.Data["Tags"] = tags
+        
+        count, err := models.GetReleaseCountByRepoID(ctx.Repo.Repository.ID, models.FindReleasesOptions{
+            IncludeDrafts: false,
+            IncludeTags:   true,
+        })
+        if err != nil {
+            ctx.ServerError("GetReleaseCountByRepoID", err)
+            return
+        }
+        ctx.Repo.Repository.NumReleases = int(count)
+        
+        ctx.Data["Title"] = owner.Name + "/" + repo.Name
+        ctx.Data["Repository"] = repo
+        ctx.Data["Owner"] = ctx.Repo.Repository.Owner
+        ctx.Data["IsRepositoryOwner"] = ctx.Repo.IsOwner()
+        ctx.Data["IsRepositoryAdmin"] = ctx.Repo.IsAdmin()
+        ctx.Data["IsRepositoryWriter"] = ctx.Repo.IsWriter()
+        
+        if ctx.Data["CanSignedUserFork"], err = ctx.Repo.Repository.CanUserFork(ctx.User); err != nil {
+            ctx.ServerError("CanUserFork", err)
+            return
+        }
+        
+        ctx.Data["DisableSSH"] = setting.SSH.Disabled
+        ctx.Data["ExposeAnonSSH"] = setting.SSH.ExposeAnonymous
+        ctx.Data["DisableHTTP"] = setting.Repository.DisableHTTPGit
+        ctx.Data["RepoSearchEnabled"] = setting.Indexer.RepoIndexerEnabled
+        ctx.Data["CloneLink"] = repo.CloneLink()
+        ctx.Data["WikiCloneLink"] = repo.WikiCloneLink()
+        
+        if ctx.IsSigned {
+            ctx.Data["IsWatchingRepo"] = models.IsWatching(ctx.User.ID, repo.ID)
+            ctx.Data["IsStaringRepo"] = models.IsStaring(ctx.User.ID, repo.ID)
+        }
+        
+        // repo is bare and display enable
+        if ctx.Repo.Repository.IsBare {
+            ctx.Data["BranchName"] = ctx.Repo.Repository.DefaultBranch
+            return
+        }
+        
+        ctx.Data["TagName"] = ctx.Repo.TagName
+        brs, err := ctx.Repo.GitRepo.GetBranches()
+        if err != nil {
+            ctx.ServerError("GetBranches", err)
+            return
+        }
+        ctx.Data["Branches"] = brs
+        ctx.Data["BranchesCount"] = len(brs)
+        
+        // If not branch selected, try default one.
+        // If default branch doesn't exists, fall back to some other branch.
+        if len(ctx.Repo.BranchName) == 0 {
+            if len(ctx.Repo.Repository.DefaultBranch) > 0 && gitRepo.IsBranchExist(ctx.Repo.Repository.DefaultBranch) {
+                ctx.Repo.BranchName = ctx.Repo.Repository.DefaultBranch
+            } else if len(brs) > 0 {
+                ctx.Repo.BranchName = brs[0]
+            }
+        }
+        ctx.Data["BranchName"] = ctx.Repo.BranchName
+        ctx.Data["CommitID"] = ctx.Repo.CommitID
+        
+        if repo.IsFork {
+            RetrieveBaseRepo(ctx, repo)
+            if ctx.Written() {
+                return
+            }
+        }
+        
+        // People who have push access or have forked repository can propose a new pull request.
+        if ctx.Repo.IsWriter() || (ctx.IsSigned && ctx.User.HasForkedRepo(ctx.Repo.Repository.ID)) {
+            // Pull request is allowed if this is a fork repository
+            // and base repository accepts pull requests.
+            if repo.BaseRepo != nil && repo.BaseRepo.AllowsPulls() {
+                ctx.Data["BaseRepo"] = repo.BaseRepo
+                ctx.Repo.PullRequest.BaseRepo = repo.BaseRepo
+                ctx.Repo.PullRequest.Allowed = true
+                ctx.Repo.PullRequest.HeadInfo = ctx.Repo.Owner.Name + ":" + ctx.Repo.BranchName
+            } else {
+                // Or, this is repository accepts pull requests between branches.
+                if repo.AllowsPulls() {
+                    ctx.Data["BaseRepo"] = repo
+                    ctx.Repo.PullRequest.BaseRepo = repo
+                    ctx.Repo.PullRequest.Allowed = true
+                    ctx.Repo.PullRequest.SameRepo = true
+                    ctx.Repo.PullRequest.HeadInfo = ctx.Repo.BranchName
+                }
+            }
+            
+            // Reset repo units as otherwise user specific units wont be loaded later
+            ctx.Repo.Repository.Units = nil
+        }
+        ctx.Data["PullRequestCtx"] = ctx.Repo.PullRequest
+        
+        if ctx.Query("go-get") == "1" {
+            ctx.Data["GoGetImport"] = ComposeGoGetImport(owner.Name, repo.Name)
+            prefix := setting.AppURL + path.Join(owner.Name, repo.Name, "src", "branch", ctx.Repo.BranchName)
+            ctx.Data["GoDocDirectory"] = prefix + "{/dir}"
+            ctx.Data["GoDocFile"] = prefix + "{/dir}/{file}#L{line}"
+        }
+    }
+}
+
 // RepoRefType type of repo reference
 type RepoRefType int
 

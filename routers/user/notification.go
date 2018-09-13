@@ -18,6 +18,28 @@ const (
 	tplNotification base.TplName = "user/notification/notification"
 )
 
+
+// GetNotificationCount is the middleware that sets the notification count in the context
+func GetIssueCount(c *context.Context) {
+    if !c.IsSigned {
+        return
+    }
+	if strings.HasPrefix(c.Req.URL.Path, "/api") {
+		return
+	}
+ 
+	if strings.HasPrefix(c.Req.URL.Path, "/issues") {
+		return
+	}
+    
+    uic, err := models.GetIssueCount(c.User.ID)
+	if err != nil {
+		c.ServerError("GetIssueCount", err)
+		return
+	}
+
+	c.Data["UserIssueCount"] = uic
+}
 // GetNotificationCount is the middleware that sets the notification count in the context
 func GetNotificationCount(c *context.Context) {
 	if strings.HasPrefix(c.Req.URL.Path, "/api") {

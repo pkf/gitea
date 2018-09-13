@@ -10,8 +10,24 @@
 
 	{{template "custom/body_outer_post" .}}
 
-	{{template "base/footer_content" .}}
-
+	<footer>
+		<div class="ui container">
+			<div class="ui left">
+				© 慧通远达 {{if (or .ShowFooterVersion .PageIsAdmin)}}{{.i18n.Tr "version"}}: {{AppVer}}{{end}} {{if ShowFooterTemplateLoadTime}}{{.i18n.Tr "page"}}: <strong>{{LoadTimes .PageStartTime}}</strong> {{.i18n.Tr "template"}}: <strong>{{call .TmplLoadTimes}}</strong>{{end}}
+			</div>
+			<div class="ui right links">
+				<div class="ui language bottom floating slide up dropdown link item">
+					<i class="world icon"></i>
+					<div class="text">{{.LangName}}</div>
+					<div class="menu">
+						{{range .AllLangs}}
+							<a class="item {{if eq $.Lang .Lang}}active selected{{end}}" href="{{if eq $.Lang .Lang}}#{{else}}{{$.Link}}?lang={{.Lang}}{{end}}">{{.Name}}</a>
+						{{end}}
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
 	<script src="{{AppSubUrl}}/vendor/plugins/jquery/jquery.min.js"></script>
 	<script src="{{AppSubUrl}}/vendor/plugins/jquery.areyousure/jquery.are-you-sure.js"></script>
 {{if .RequireSimpleMDE}}
@@ -43,11 +59,6 @@
 {{end}}
 {{if .RequireU2F}}
 	<script src="{{AppSubUrl}}/vendor/plugins/u2f/index.js"></script>
-{{end}}
-{{if .EnableCaptcha}}
-	{{if eq .CaptchaType "recaptcha"}}
-		<script src="https://www.google.com/recaptcha/api.js" async></script>
-	{{end}}
 {{end}}
 {{if .RequireTribute}}
 	<script src="{{AppSubUrl}}/vendor/plugins/tribute/tribute.min.js"></script>

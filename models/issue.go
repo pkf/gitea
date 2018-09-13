@@ -1460,6 +1460,35 @@ type UserIssueStatsOptions struct {
 	IsClosed    bool
 }
 
+type UserIssueCount struct {
+    AssignCount            int64
+    CreateCount            int64
+}
+
+
+// GetIssueCount returns the issue count for user
+func GetIssueCount(UserID  int64)(uic *UserIssueCount, err error) {
+    uic = new(UserIssueCount)
+    cond := builder.NewCond()
+    cond = cond.And(builder.Eq{"issue.is_pull": false})
+    cond = cond.And(builder.Eq{"issue.is_closed": false})
+    uic.AssignCount, err = x.Where(cond).
+        Join("INNER", "issue_assignees", "issue.id = issue_assignees.issue_id").
+        And("issue_assignees.assignee_id = ?", UserID).
+        Count(new(Issue))
+    if err != nil {
+        return nil,err
+    }
+    
+    uic.CreateCount, err = x.Where(cond).
+        And("poster_id = ?", UserID).
+        Count(new(Issue))
+    if err != nil {
+        return nil,err
+    }
+    return
+}
+
 // GetUserIssueStats returns issue statistic information for dashboard by given conditions.
 func GetUserIssueStats(opts UserIssueStatsOptions) (*IssueStats, error) {
 	var err error

@@ -2048,7 +2048,7 @@ function initVueComponents(){
 
         data: function() {
             return {
-                tab: 'repos',
+                tab: 'organizations',
                 repos: [],
                 reposTotalCount: 0,
                 reposFilter: 'all',

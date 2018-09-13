@@ -24,14 +24,16 @@
 			<div class="ui eleven wide column">
 				{{if .IsOrganizationOwner}}
 					<div class="text right">
-					{{if .DocRepo}}
-						<a class="ui blue button" href="{{.DocRepo.Link}}" style="float: left;">{{if .DocRepo.Description}}{{.DocRepo.Description}}{{else}}{{.DocRepo.Name}}{{end}}</a>
-					{{end}}
-
 						<a class="ui green button" href="{{AppSubUrl}}/repo/create?org={{.Org.ID}}"><i class="octicon octicon-repo-create"></i> {{.i18n.Tr "new_repo"}}</a>
 					</div>
 					<div class="ui divider"></div>
 				{{end}}
+				{{if .IndexFileContent}}
+                    <div class="file-view markdown has-emoji">
+                            {{.IndexFileContent | Safe}}
+                    </div>
+                    <div class="ui divider"></div>
+                {{end}}
 				{{template "explore/repo_list" .}}
 				{{template "base/paginate" .}}
 			</div>
@@ -53,7 +55,6 @@
 						{{end}}
 					{{end}}
 				</div>
-
 				{{if .IsOrganizationMember}}
 					<div class="ui top attached header">
 						<strong>{{.i18n.Tr "org.teams"}}</strong>
@@ -77,6 +78,29 @@
 							<a class="ui blue small button" href="{{.OrgLink}}/teams/new">{{.i18n.Tr "org.create_new_team"}}</a>
 						</div>
 					{{end}}
+					{{if .HasDocRepo}}
+					<h4 class="ui top attached header">
+                    	<strong>产品文档库</strong>
+					</h4>
+					<div class="ui attached table segment teams">
+					{{if .DocRepo}}
+                        <div class="item">
+                            <a href="{{.DocRepo.Link}}">
+                            <strong class="team-name">
+                            {{if .DocRepo.Description}}{{.DocRepo.Description}}{{else}}{{.DocRepo.Name}}{{end}}
+                            </strong></a>
+                        </div>
+                    {{end}}
+                    {{if .PMDocRepo}}
+                        <div class="item">
+                            <a href="{{.PMDocRepo.Link}}">
+                            <strong class="team-name">
+                            {{if .PMDocRepo.Description}}{{.PMDocRepo.Description}}{{else}}{{.PMDocRepo.Name}}{{end}}
+                            </strong></a>
+                        </div>
+                    {{end}}
+                    </div>
+                    {{end}}
 				{{end}}
 			</div>
 		</div>

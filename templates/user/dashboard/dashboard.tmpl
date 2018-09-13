@@ -16,7 +16,7 @@
 					{{if not .ContextUser.IsOrganization}}
 					:organizations="[
 						{{range .ContextUser.Orgs}}
-						{name: '{{.Name}}', num_repos: '{{.NumRepos}}'},
+						{name: '{{.Name}}',fullname:'{{if .FullName}}{{.FullName}}{{else}}{{.Name}}{{end}}', num_repos: '{{.NumRepos}}'},
 						{{end}}
 					]"
 					:is-organization="false"
@@ -101,7 +101,7 @@
 									<li v-for="org in organizations">
 										<a :href="suburl + '/' + org.name">
 											<i class="octicon octicon-organization"></i>
-											<strong class="text truncate item-name">${org.name}</strong>
+											<strong class="text truncate item-name">${org.fullname}</strong>
 											<span class="ui right text light grey">
 												${org.num_repos} <i class="octicon octicon-repo rear"></i>
 											</span>
