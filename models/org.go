@@ -630,20 +630,50 @@ func (org *User) AccessibleReposEnv(userID int64) (AccessibleReposEnvironment, e
 	return &accessibleReposEnv{org: org, userID: userID, teamIDs: teamIDs}, nil
 }
 
+// select `repository`.id,`repository`.name FROM repository
+// INNER JOIN team_repo on `team_repo`.repo_id=`repository`.id
+// INNER JOIN access on `access`.repo_id=`repository`.id
+// where (`repository`.owner_id = 38 and (`repository`.is_private = false or `repository`.name ='Document'))
+// or team_repo.team_id in(29)
+// or ((SELECT count(1) FROM team WHERE id in(29) AND name='PM' AND org_id = 38)>0 and `repository`.name ='PMDocument')
+// or (`repository`.owner_id = 38 and `access`.user_id=7)
+// GROUP BY `repository`.id,`repository`.updated_unix
+// ORDER BY updated_unix DESC
+
 func (env *accessibleReposEnv) cond() builder.Cond {
-	var cond builder.Cond = builder.Eq{
-		"`repository`.owner_id":   env.org.ID,
-		"`repository`.is_private": false,
-	}
+ 
+    cond := builder.And(
+        builder.Eq{"`repository`.owner_id":   env.org.ID},
+        builder.Or(
+            builder.Eq{"`repository`.is_private": false},
+            builder.Eq{"`repository`.name":"Document"},
+        ),
+    )
+    
+    cond = cond.Or(builder.Eq{
+        "`repository`.owner_id":env.org.ID,
+        "`access`.user_id":env.userID,
+    })
+    
 	if len(env.teamIDs) > 0 {
 		cond = cond.Or(builder.In("team_repo.team_id", env.teamIDs))
 	}
-	return cond
+    // find user's repo.id in org
+    counts,err:=x.Where(
+        builder.And(builder.In("id", env.teamIDs),builder.Eq{"name":"PM","org_id":env.org.ID}),
+    ).Count(&Team{})
+    
+    if err==nil && counts>0{
+        cond = cond.Or(builder.Eq{"`repository`.name":"PMDocument"})
+    }
+    
+    return cond
 }
 
 func (env *accessibleReposEnv) CountRepos() (int64, error) {
 	repoCount, err := x.
 		Join("INNER", "team_repo", "`team_repo`.repo_id=`repository`.id").
+		Join("INNER", "access", "`access`.repo_id=`repository`.id").
 		Where(env.cond()).
 		Distinct("`repository`.id").
 		Count(&Repository{})
@@ -662,7 +692,8 @@ func (env *accessibleReposEnv) RepoIDs(page, pageSize int) ([]int64, error) {
 	return repoIDs, x.
 		Table("repository").
 		Join("INNER", "team_repo", "`team_repo`.repo_id=`repository`.id").
-		Where(env.cond()).
+        Join("INNER", "access", "`access`.repo_id=`repository`.id").
+        Where(env.cond()).
 		GroupBy("`repository`.id,`repository`.updated_unix").
 		OrderBy("updated_unix DESC").
 		Limit(pageSize, (page-1)*pageSize).
@@ -680,7 +711,6 @@ func (env *accessibleReposEnv) Repos(page, pageSize int) ([]*Repository, error) 
 	if len(repoIDs) <= 0 {
 		return repos, nil
 	}
-
 	return repos, x.
 		In("`repository`.id", repoIDs).
 		Find(&repos)
